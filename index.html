@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>Geometrize</title>
+</head>
+<body>
+  <form>
+    <label for="file-input">Upload File</label>
+    <input type="file" id="file-input"/>
+    <p>OR</p>
+    <label for="file-url">Enter URL</label>
+    <input type="url" id="file-url"/>
+    
+    <div class="adjustments" style="display: grid; grid-template-columns: 1fr 1fr; grid-gap: 10px;">
+      <div class="shapes">
+        <p>Select all shapes you want: </p>
+        <label>
+          <input type="checkbox" name="shapeName" value="Rectangles" />
+          Rectangles
+        </label>
+        <label>
+          <input type="checkbox" name="shapeName" value="Triangles" checked="true" />
+          Triangles
+        </label>
+        <label>
+          <input type="checkbox" name="shapeName" value=Ellipses />
+          Ellipses
+        </label>
+      </div>
+      <div class="stepSize">
+        <p>Steps size of <label class="value"></label> shapes</p>
+        <input type="range" min="1" max="300" name="stepSize" value="50"/>
+      </div>
+      <div class="viewSize">
+        <p>Viewing Size <label class="value"></label> pixels</p>
+        <input type="range" min="256" max="2048" name="viewSize" value="512"/>
+      </div>
+      <div class="alpha">
+        <p>Initial transparency of <label class="value"></label></p>
+        <input type="range" min="0" max="1" step="0.1" name="alpha" value="0.5"/>
+      </div>
+      <div class="computeSize">
+        <p>Compute Size of <label class="value"></label> pixels</p>
+        <input type="range" min="128" max="512" name="computeSize" value="256"/>
+      </div>
+      <div class="mutateTimes">
+        <p>Try optimisation <label class="value"></label> times</p>
+        <input type="range" min="0" max="100" name="mutateTimes" value="30"/>
+      </div>
+      <div class="beginShapes">
+        <p>Start every try with <label class="value"></label> shapes</p>
+        <input type="range" min="0" max="100" name="mutateTimes" value="30"/>
+      </div>
+      <div class="fillOption">
+        <p>Background color of image</p>
+        <label>
+          <input type="radio" name="fillOption" value="auto" checked="checked" />
+          Auto
+        </label>
+        <label>
+          <input type="radio" name="fillOption" value="fixed" />
+          Choose:
+        </label>
+        <input type="color" name="fillColor" value="#000000">
+      </div>
+    </div>
+
+    <input type="submit" value="Do it" />
+  </form>
+  <div id="output">
+    <label>
+      <input type="radio" name="type" value="raster" checked="checked">
+      Raster Image
+    </label>
+    <label>
+      <input type="radio" name="type" value="vector">
+      Vector Image
+    </label>
+  </div>
+</body>
+<script src="index.js"></script>
+</html>
