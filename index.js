@@ -97,6 +97,41 @@ function dist_diff(dist, pix){
   return Math.pow(dist * 255, 2) * (3 * pix)
 }
 
+function inRange(x, l, h){
+  // Really nice logic
+  return Math.max(min, Math.min(max, x))
+}
+
+function getColorOfRange(color){
+  return inRange(color, 0, 255)
+}
+
+function getFillColor(canvas){
+	let iD = canvas.getImageData()
+	let width = data.width
+	let height = data.height
+	let data = iD.data
+	let rgb = [0, 0, 0]
+	let count = 0
+	let i
+	for(let x = 0; x < width; x++){
+		for(let y = 0; y < height; y++){
+			if (x > 0 && y > 0 && x < width - 1 && y < height - 1){
+        // Ignoring this because we only need boundary colors
+        continue
+      }
+			count++
+			i = 4 * (x + y * w) //Get the array index acc to x and y
+			rgb[0] += d[i]
+			rgb[1] += d[i + 1]
+			rgb[2] += d[i + 2]
+		}
+	}
+  // ~~ means return nearest lowest integer
+	rgb = rgb.map(x => ~~(x / count)).map(getColorOfRange)
+	return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
+}
+
 class Canvas{
   constructor(width, height){
     this.canvas = document.createElement('canvas')
@@ -104,7 +139,10 @@ class Canvas{
     this.canvas.height = height
     this.ctx = this.canvas.getContext('2d')
     this.imageData = null
-    fillFull(this.)
+    // fillFull(this.)
+  }
+  static newBlankCanvas(config){
+    return new Canvas(config.width, config.height).fillFull(config.fill)
   }
 
   static newLeftCanvas(config){
@@ -123,6 +161,10 @@ class Canvas{
 
           let canvas = new Canvas(config.width, config.height)
           canvas.ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+
+          if(config.fill == 'auto'){
+            config.fill = getFillColor(canvas)
+          }
 
           resolve(canvas)
         }
