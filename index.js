@@ -141,6 +141,96 @@ function newBlankCanvas(config){
   return new Canvas(config.width, config.height).fillFull(config.fill)
 }
 
+function computeColor(offset, imageData, alpha){
+	let color = [0, 0, 0]
+	let shapeData = imageData.shape.data
+	let currentData = imageData.current.data
+	let targetData = imageData.target.data
+
+	let shapeInd, shapeX, shapeY, canvasIndex, canvasX, canvasY /* shape-index, shape-x, shape-y, full-index, full-x, full-y */
+	let shapeWidth = shape.width
+	let shapeHeight = shape.height
+	let canvasWidth = current.width
+	let canvasHeight = current.height
+	let count = 0
+
+	for(let y = 0; y < shapeHeight; y++){
+		canvasY = y + offset.top
+		if (canvasY < 0 || canvasY >= canvasHeight){ continue } // Not outside the shape
+
+		for(let x = 0; x < shapeWidth; x++){
+			canvasX = x + offset.left
+			if (canvasX < 0 || canvasX >= canvasWidth){ continue } // Not outside the shape
+
+			shapeIndex = 4 * (shapeX + (shapeY * shapeWidth))
+			if (shapeData[shapeIndex + 3] == 0){ continue } //Ignore 0 opacity area
+
+			canvasIndex = 4 * (canvasX + (canvasY * canvasWidth))
+			color[0] += (targetData[canvasIndex] - currentData[fi]) / alpha + currentData[fi]
+			color[1] += (targetData[canvasIndex + 1] - currentData[canvasIndex + 1]) / alpha + currentData[canvasIndex + 1]
+			color[2] += (targetData[canvasIndex + 2] - currentData[canvasIndex + 2]) / alpha + currentData[canvasIndex + 2]
+
+			count++;
+		}
+	}
+
+	return color.map(x => ~~(x/count)).map(getColorOfRange)
+}
+
+function computeDifferenceChange(offset, imageData, color) { //Copied
+	let {shape, current, target} = imageData;
+	let shapeData = shape.data;
+	let currentData = current.data;
+	let targetData = target.data;
+
+	let a, b, d1r, d1g, d1b, d2r, d2b, d2g;
+	let si, sx, sy, fi, fx, fy; /* shape-index, shape-x, shape-y, full-index */
+	let sw = shape.width;
+	let sh = shape.height;
+	let fw = current.width;
+	let fh = current.height;
+
+	var sum = 0; /* V8 opt bailout with let */
+
+	for (sy=0; sy<sh; sy++) {
+		fy = sy + offset.top;
+		if (fy < 0 || fy >= fh) { continue; } /* outside of the large canvas (vertically) */
+
+		for (sx=0; sx<sw; sx++) {
+			fx = offset.left + sx;
+			if (fx < 0 || fx >= fw) { continue; } /* outside of the large canvas (horizontally) */
+
+			si = 4*(sx + sy*sw); /* shape (local) index */
+			a = shapeData[si+3];
+			if (a == 0) { continue; } /* only where drawn */
+
+			fi = 4*(fx + fy*fw); /* full (global) index */
+
+			a = a/255;
+			b = 1-a;
+			d1r = targetData[fi]-currentData[fi];
+			d1g = targetData[fi+1]-currentData[fi+1];
+			d1b = targetData[fi+2]-currentData[fi+2];
+
+			d2r = targetData[fi] - (color[0]*a + currentData[fi]*b);
+			d2g = targetData[fi+1] - (color[1]*a + currentData[fi+1]*b);
+			d2b = targetData[fi+2] - (color[2]*a + currentData[fi+2]*b);
+
+			sum -= d1r*d1r + d1g*d1g + d1b*d1b;
+			sum += d2r*d2r + d2g*d2g + d2b*d2b;
+		}
+	}
+
+	return sum;
+}
+
+function computeColorAndDifferenceChange(offset, imageData, alpha){
+  let rgb = computeColor(offset, imageData, alpha)
+  let diffChange = computeDifferenceChange(offset, imageData, rgb)
+  let color = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
+  return {color, diffChange}
+}
+
 class Canvas{
   constructor(width, height){
     this.canvas = document.createElement('canvas')
@@ -244,6 +334,48 @@ class State{
   }
 }
 
+class Step{
+  constructor(shape, config, state){
+    this.shape = shape
+    this.config = config
+    this.alpha = config.alpha
+
+    this.fillColor = 'rgb(0, 0, 0)'
+    this.distance = Infinity
+    if(state){
+      compute(state)
+    }
+  }
+  compute(state) {
+		let pixels = state.canvas.node.width * state.canvas.node.height;
+		let offset = this.shape.bbox;
+
+		let imageData = {
+			shape: this.shape.rasterize(this.alpha).getImageData(),
+			current: state.canvas.getImageData(),
+			target: state.target.getImageData()
+		};
+
+		let {color, differenceChange} = computeColorAndDifferenceChange(offset, imageData, this.alpha);
+		this.color = color;
+		let currentDifference = dist_diff(state.distance, pixels);
+		if (-differenceChange > currentDifference) debugger;
+		this.distance = diff_dist(currentDifference + differenceChange, pixels);
+
+		return Promise.resolve(this);
+  }
+  
+  mutateStep(){
+    let newShape = this.shape.mutate(this.config)
+    let newStep = new this(newShape, this.config)
+    if(this.config.mutateAlpha){
+      // If mutate alpha is active, mutate alpha as well
+      newStep.alpha = inRange(this.alpha + (Math.random()-0.5) * 0.08, 0.1, 1)
+    }
+    return newStep
+  }
+}
+
 class Optimiser{
   constructor(leftCanvas, config){
     this.config = config
@@ -253,7 +385,9 @@ class Optimiser{
   }
 
   addShape(){
-
+    this.getAShape().then(step => this.optimizeStep(step)).then(step => {
+      
+    })
   }
 
   getAShape(){
@@ -262,8 +396,14 @@ class Optimiser{
     let allPromises = []
     for(let i = 0; i < MAX; i++){
       let shape = Shape.create(this.config)
-
+      let promise = new Step(shape, this.cfg, this.state).then(step => {
+				if(!bestStep || step.distance < bestStep.distance){
+					bestStep = step
+				}
+			})
+			allPromises.push(promise);
     }
+    return Promise.all(allPromises).then(() => bestStep)
   }
 }
 
@@ -328,6 +468,29 @@ class Shape{
     })
     ctx.fill()
     ctx.closePath()
+  }
+
+  mutate(config){
+    let copy = new this(0, 0)
+    copy.points = JSON.parse(JSON.stringify(this.points))
+
+    let randomIndex = Math.floor(Math.random() * copy.points.length)
+    let randomPoint = copy.points[randomIndex]
+    let randomAngle = Math.random() * 2 * Math.PI
+    let randomDist = Math.random() * 20
+    randomPoint[0] += ~~(randomDist * Math.cos(randomAngle))
+    randomPoint[1] += ~~(randomDist * Math.sin(randomAngle))
+    
+    return copy.computeBbox()
+  }
+
+  rasterize(alpha){
+    let newCanvas = new Canvas(this.bbox.width, this.bbox.height)
+    newCanvas.ctx.fillStyle = '#000'
+    newCanvas.ctx.globalAlpha = alpha
+    newCanvas.ctx.translate(-this.bbox.left, -this.bbox.top)
+    this.render(newCanvas.ctx)
+    return newCanvas
   }
 }
 
