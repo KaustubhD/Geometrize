@@ -3,6 +3,11 @@ let typesRadio = document.querySelectorAll('input[name="type"]')
 let left = output.querySelector('#left')
 let raster = output.querySelector('#raster')
 let vector = output.querySelector('#vector')
+const shapeClasses = {
+  "Triangles": Triangle,
+  "Rectangles": Rectangle,
+  "Ellipses": Ellipse
+}
 console.log(typesRadio)
 
 function init(){
@@ -65,7 +70,7 @@ function getConfig(){
   config['shapes'] = []
 
   form.querySelectorAll('[name="shapeName"]').forEach(el => {
-    if(el.checked){ config['shapes'].push(el.value)}
+    if(el.checked){ config['shapes'].push(shapeClasses[el.value])}
   })
 
   form.querySelectorAll('[name="fillOption"]').forEach(el => {
@@ -132,6 +137,10 @@ function getFillColor(canvas){
 	return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
 }
 
+function newBlankCanvas(config){
+  return new Canvas(config.width, config.height).fillFull(config.fill)
+}
+
 class Canvas{
   constructor(width, height){
     this.canvas = document.createElement('canvas')
@@ -139,10 +148,6 @@ class Canvas{
     this.canvas.height = height
     this.ctx = this.canvas.getContext('2d')
     this.imageData = null
-    // fillFull(this.)
-  }
-  static newBlankCanvas(config){
-    return new Canvas(config.width, config.height).fillFull(config.fill)
   }
 
   static newLeftCanvas(config){
@@ -231,12 +236,113 @@ class Canvas{
 
 }
 
+class State{
+  constructor(left, original, dist = Infinity){
+    this.left = leftCanvas
+    this.original = original
+    this.dist = dist == Infinity ? left.distCans(original) : dist
+  }
+}
+
 class Optimiser{
   constructor(leftCanvas, config){
     this.config = config
-    this.state = new State(leftCanvas, new Canvas)
+    this.state = new State(leftCanvas, newBlankCanvas(config))
+    this.steps = 0
+    this.onStep = () => {}
+  }
+
+  addShape(){
+
+  }
+
+  getAShape(){
+    const MAX = this.config.beginShapes
+    let best
+    let allPromises = []
+    for(let i = 0; i < MAX; i++){
+      let shape = Shape.create(this.config)
+
+    }
   }
 }
+
+class Shape{
+  static create(config){
+    let index = Math.floor(Math.random() * config.shapes) //Random shape out of the shapes array
+    let shapeName = config.shapes[index]
+    return new shapeName(config.width, config.height)
+  }
+  constructor(width, height, num){
+    this.bbox = {}
+    if(num){
+      this.points = createPoints(width, height, num)
+      this.computeBbox()
+    }
+  }
+
+  static randomPoint(width, height){
+    return [~~(Math.random() * width), ~~(Math.random() * height)]
+  }
+  createPoints(width, height, num){
+    let point = Shape.randomPoint(width, height)
+    let points = [point]
+    for(let i = 0; i < num - 1; i++){
+      let angle = Math.random() * 2 * Math.PI
+      let dist = Math.random() * 20 //20 is the base dist
+      points.push([
+        point[0] + ~~(radius * Math.cos(angle)), // cos = point.x / radius
+        point[1] + ~~(radius * Math.sin(angle)) // sin = point.y / radius
+      ])
+    }
+    return points
+  }
+
+  computeBbox(){
+    let min = [
+      this.points.reduce((acc, point) => Math.min(point[0], acc), Infinity), //get lowest x
+      this.points.reduce((acc, point) => Math.min(point[1], acc), Infinity)  // get lowest y
+    ]
+    let max = [
+      this.points.reduce((acc, point) => Math.max(point[0], acc), -Infinity), //get highest x
+      this.points.reduce((acc, point) => Math.max(point[1], acc), -Infinity)  // get highest y
+    ]
+    this.bbox = {
+      top: min[1],
+      left: min[0],
+      width: max[0] - min[0] || 1,
+      height: max[1] - max[1] || 1
+    }
+    return this
+  }
+
+  paintShape(ctx){
+    ctx.beginPath()
+    this.points.forEach((point, index) => {
+      if(index == 0){
+        ctx.moveTo(point[0], point[1])
+      }
+      else{
+        ctx.lineTo(point[0], point[1])
+      }
+    })
+    ctx.fill()
+    ctx.closePath()
+  }
+}
+
+class Triangle extends Shape{
+  constructor(width, height){
+    super(width, height, 3)
+  }
+}
+
+class Rectangle extends Shape{
+  constructor(width, height){
+    super(width, height, 4)
+  }
+}
+
 
 function getScale(wid, hei, siz){
   return Math.max(wid / siz, hei / siz, 1)
