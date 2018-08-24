@@ -324,6 +324,19 @@ class Canvas{
     return diff_dist(diff, this.canvas.width * this.canvas.height)
   }
 
+  clone(){
+    let newCanvas = new Canvas(this.node.width, this.node.height)
+    newCanvas.ctx.drawImage(this.canvas, 0, 0)
+    return newCanvas
+  }
+
+  drawStepOnCanvas(step) {
+		this.ctx.globalAlpha = step.alpha
+		this.ctx.fillStyle = step.color
+		step.shape.render(this.ctx)
+		return this
+	}
+
 }
 
 class State{
@@ -374,6 +387,10 @@ class Step{
     }
     return newStep
   }
+  applyStep(){
+    let newCanvas = state.original.clone().drawStepOnCanvas(this)
+    return new State(this.target, newCanvas, this.distance)
+  }
 }
 
 class Optimiser{
@@ -388,6 +405,29 @@ class Optimiser{
     this.getAShape().then(step => this.optimizeStep(step)).then(step => {
       
     })
+  }
+
+  optimizeStep(step){
+    const MAX = this.config.mutateTimes
+    let failedTimes = 0
+    let times = 0
+    let bestStep = step
+    let resolve
+    let promise = new Promise(res => resolve = res)
+
+    let mutateStep = () => {
+      if(failedTimes >= MAX){ return resolve(bestStep) }
+      times++
+      bestStep.mutate().compute(this.state).then(newStep => {
+        if(newStep.distance > bestStep.distance){  failedTimes++ }
+        else{
+          bestStep = newStep
+          failedTimes = 0
+        }
+      })
+      mutateStep()
+    }
+    return promise
   }
 
   getAShape(){
@@ -489,7 +529,7 @@ class Shape{
     newCanvas.ctx.fillStyle = '#000'
     newCanvas.ctx.globalAlpha = alpha
     newCanvas.ctx.translate(-this.bbox.left, -this.bbox.top)
-    this.render(newCanvas.ctx)
+    this.paintShape(newCanvas.ctx)
     return newCanvas
   }
 }
