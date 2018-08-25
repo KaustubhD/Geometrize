@@ -1,13 +1,12 @@
+'use strict'
+
 let output = document.getElementById('output')
 let typesRadio = document.querySelectorAll('input[name="type"]')
 let left = output.querySelector('#left')
+let stepsLabel = document.getElementById('stepsLabel')
 let raster = output.querySelector('#raster')
 let vector = output.querySelector('#vector')
-const shapeClasses = {
-  "Triangles": Triangle,
-  "Rectangles": Rectangle,
-  "Ellipses": Ellipse
-}
+let steps = 0
 console.log(typesRadio)
 
 function init(){
@@ -55,7 +54,7 @@ function submitForm(e){
   let config = getConfig()
   config.temp = temp
   console.log(config)
-  newLeftCanvas(config).then(leftCanvas => newRightCanvas(leftCanvas, config))
+  Canvas.newLeftCanvas(config).then(leftCanvas => Canvas.newRightCanvas(leftCanvas, config))
 }
 
 let numericProps = ['stepSize', 'alpha', 'viewSize', 'computeSize', 'mutateTimes', 'beginShapes']
@@ -102,7 +101,7 @@ function dist_diff(dist, pix){
   return Math.pow(dist * 255, 2) * (3 * pix)
 }
 
-function inRange(x, l, h){
+function inRange(x, min, max){
   // Really nice logic
   return Math.max(min, Math.min(max, x))
 }
@@ -113,8 +112,8 @@ function getColorOfRange(color){
 
 function getFillColor(canvas){
 	let iD = canvas.getImageData()
-	let width = data.width
-	let height = data.height
+	let width = iD.width
+	let height = iD.height
 	let data = iD.data
 	let rgb = [0, 0, 0]
 	let count = 0
@@ -126,18 +125,20 @@ function getFillColor(canvas){
         continue
       }
 			count++
-			i = 4 * (x + y * w) //Get the array index acc to x and y
-			rgb[0] += d[i]
-			rgb[1] += d[i + 1]
-			rgb[2] += d[i + 2]
+			i = 4 * (x + y * width) //Get the array index acc to x and y
+			rgb[0] += data[i]
+			rgb[1] += data[i + 1]
+			rgb[2] += data[i + 2]
 		}
 	}
   // ~~ means return nearest lowest integer
-	rgb = rgb.map(x => ~~(x / count)).map(getColorOfRange)
+  rgb = rgb.map(x => ~~(x / count)).map(getColorOfRange)
 	return `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
 }
 
 function newBlankCanvas(config){
+  // console.log('In newblank')
+  // console.log(config.width)
   return new Canvas(config.width, config.height).fillFull(config.fill)
 }
 
@@ -147,11 +148,11 @@ function computeColor(offset, imageData, alpha){
 	let currentData = imageData.current.data
 	let targetData = imageData.target.data
 
-	let shapeInd, shapeX, shapeY, canvasIndex, canvasX, canvasY /* shape-index, shape-x, shape-y, full-index, full-x, full-y */
-	let shapeWidth = shape.width
-	let shapeHeight = shape.height
-	let canvasWidth = current.width
-	let canvasHeight = current.height
+	let shapeIndex, shapeX, shapeY, canvasIndex, canvasX, canvasY /* shape-index, shape-x, shape-y, full-index, full-x, full-y */
+	let shapeWidth = imageData.shape.width
+	let shapeHeight = imageData.shape.height
+	let canvasWidth = imageData.current.width
+	let canvasHeight = imageData.current.height
 	let count = 0
 
 	for(let y = 0; y < shapeHeight; y++){
@@ -166,11 +167,11 @@ function computeColor(offset, imageData, alpha){
 			if (shapeData[shapeIndex + 3] == 0){ continue } //Ignore 0 opacity area
 
 			canvasIndex = 4 * (canvasX + (canvasY * canvasWidth))
-			color[0] += (targetData[canvasIndex] - currentData[fi]) / alpha + currentData[fi]
+			color[0] += (targetData[canvasIndex] - currentData[canvasIndex]) / alpha + currentData[canvasIndex]
 			color[1] += (targetData[canvasIndex + 1] - currentData[canvasIndex + 1]) / alpha + currentData[canvasIndex + 1]
 			color[2] += (targetData[canvasIndex + 2] - currentData[canvasIndex + 2]) / alpha + currentData[canvasIndex + 2]
 
-			count++;
+			count++
 		}
 	}
 
@@ -178,6 +179,10 @@ function computeColor(offset, imageData, alpha){
 }
 
 function computeDifferenceChange(offset, imageData, color) { //Copied
+  // console.log('in function')
+  // console.log(offset)
+  // console.log(imageData)
+  // console.log(color)
 	let {shape, current, target} = imageData;
 	let shapeData = shape.data;
 	let currentData = current.data;
@@ -220,15 +225,16 @@ function computeDifferenceChange(offset, imageData, color) { //Copied
 			sum += d2r*d2r + d2g*d2g + d2b*d2b;
 		}
 	}
-
+  console.log(`Sum is ${sum}`)
 	return sum;
 }
 
 function computeColorAndDifferenceChange(offset, imageData, alpha){
   let rgb = computeColor(offset, imageData, alpha)
-  let diffChange = computeDifferenceChange(offset, imageData, rgb)
+  let differenceChange = computeDifferenceChange(offset, imageData, rgb)
   let color = `rgb(${rgb[0]}, ${rgb[1]}, ${rgb[2]})`
-  return {color, diffChange}
+  // console.log(`getting color ${color}`)
+  return {color, differenceChange}
 }
 
 class Canvas{
@@ -253,6 +259,8 @@ class Canvas{
           config.width = image.naturalWidth / computeScale
           config.height = image.naturalHeight / computeScale
           config.scale = computeScale / viewScale
+          // console.log('Innnnn herererererere')
+          // console.log(config)
 
           let canvas = new Canvas(config.width, config.height)
           canvas.ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
@@ -272,6 +280,9 @@ class Canvas{
   }
 
   static newTestCanvas(config){
+    config.width = config.computeSize
+    config.height = config.computeSize
+    config.scale = 1
     let [w, h] = [config.computeSize, config.computeSize]
     let canvas = new Canvas(w, h)
     canvas.fillFull('#fff')
@@ -293,16 +304,42 @@ class Canvas{
     ctx.arc((3 * w) / 4, h / 2, w / 7, 0, 2 * Math.PI, true)
     ctx.fill()
 
+    if(config.fill == 'auto'){
+      config.fill = getFillColor(canvas)
+    }
     return canvas
   }
 
   static newRightCanvas(leftCanvas, config){
-    
-    left.appendChild(leftCanvas.canvas)
+    left.innerHTML = ''
+    raster.innerHTML = ''
+    stepsLabel.innerHTML = ''
 
+    left.appendChild(leftCanvas.canvas)
+    let optimizer = new Optimizer(leftCanvas, config)
+    steps = 0
+
+    // console.log('New right canvas')
+    let newConfig = JSON.parse(JSON.stringify(config))
+    // console.log('COoooooonfig')
+    // console.log(config)
+    newConfig.width = config.scale * config.width
+    newConfig.height = config.scale * config.height
+    // console.log(newConfig)
+    let newCanvas = new Canvas(newConfig.width, newConfig.height).fillFull(newConfig.fill)
+    newCanvas.ctx.scale(config.scale, config.scale)
+    raster.appendChild(newCanvas.canvas)
+
+    optimizer.onStep = (step) => {
+      if(step){ //We can't have null here
+        newCanvas.drawStepOnCanvas(step)
+        // let percent = 
+      }
+    }
+    optimizer.addShape()
   }
 
-  static fillFull(color){
+  fillFull(color){
     this.ctx.fillStyle = color
     this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
     return this
@@ -316,16 +353,20 @@ class Canvas{
   }
 
   diffCans(otherOne){
-    return diffIt(this.data.getImageData(), otherOne.data.getImageData())
+    return diffIt(this.getImageData(), otherOne.getImageData())
   }
 
   distCans(otherOne){
+    // console.log('this')
+    // console.log(this)
+    // console.log('Other one')
+    // console.log(otherOne)
     let diff = this.diffCans(otherOne)
     return diff_dist(diff, this.canvas.width * this.canvas.height)
   }
 
   clone(){
-    let newCanvas = new Canvas(this.node.width, this.node.height)
+    let newCanvas = new Canvas(this.canvas.width, this.canvas.height)
     newCanvas.ctx.drawImage(this.canvas, 0, 0)
     return newCanvas
   }
@@ -333,17 +374,17 @@ class Canvas{
   drawStepOnCanvas(step) {
 		this.ctx.globalAlpha = step.alpha
 		this.ctx.fillStyle = step.color
-		step.shape.render(this.ctx)
+		step.shape.paintShape(this.ctx)
 		return this
 	}
 
 }
 
 class State{
-  constructor(left, original, dist = Infinity){
-    this.left = leftCanvas
-    this.original = original
-    this.dist = dist == Infinity ? left.distCans(original) : dist
+  constructor(left, right, dist = Infinity){
+    this.left = left
+    this.right = right
+    this.distance = dist == Infinity ? left.distCans(right) : dist
   }
 }
 
@@ -353,47 +394,49 @@ class Step{
     this.config = config
     this.alpha = config.alpha
 
-    this.fillColor = 'rgb(0, 0, 0)'
+    this.fillColor = 'rgb(255, 0, 0)'
     this.distance = Infinity
-    if(state){
-      compute(state)
-    }
+    // if(state){
+    //   return this.compute(state)
+    // }
   }
   compute(state) {
-		let pixels = state.canvas.node.width * state.canvas.node.height;
+		let pixels = state.right.canvas.width * state.right.canvas.height;
 		let offset = this.shape.bbox;
-
 		let imageData = {
 			shape: this.shape.rasterize(this.alpha).getImageData(),
-			current: state.canvas.getImageData(),
-			target: state.target.getImageData()
-		};
+			current: state.right.getImageData(),
+			target: state.left.getImageData()
+    };
+    // console.log('In step')
+    // console.log(imageData)
 
-		let {color, differenceChange} = computeColorAndDifferenceChange(offset, imageData, this.alpha);
+    let {color, differenceChange} = computeColorAndDifferenceChange(offset, imageData, this.alpha);
+    // console.log(`Diff change is ${differenceChange}`)
 		this.color = color;
 		let currentDifference = dist_diff(state.distance, pixels);
 		if (-differenceChange > currentDifference) debugger;
 		this.distance = diff_dist(currentDifference + differenceChange, pixels);
-
+    // console.log(this.distance)
 		return Promise.resolve(this);
   }
   
   mutateStep(){
     let newShape = this.shape.mutate(this.config)
-    let newStep = new this(newShape, this.config)
+    let newStep = new this.constructor(newShape, this.config)
     if(this.config.mutateAlpha){
       // If mutate alpha is active, mutate alpha as well
-      newStep.alpha = inRange(this.alpha + (Math.random()-0.5) * 0.08, 0.1, 1)
+      newStep.alpha = inRange(this.alpha + (Math.random() - 0.5) * 0.08, 0.1, 1)
     }
     return newStep
   }
-  applyStep(){
-    let newCanvas = state.original.clone().drawStepOnCanvas(this)
-    return new State(this.target, newCanvas, this.distance)
+  applyStep(state){
+    let newCanvas = state.right.clone().drawStepOnCanvas(this)
+    return new State(state.left, newCanvas, this.distance)
   }
 }
 
-class Optimiser{
+class Optimizer{
   constructor(leftCanvas, config){
     this.config = config
     this.state = new State(leftCanvas, newBlankCanvas(config))
@@ -402,31 +445,65 @@ class Optimiser{
   }
 
   addShape(){
+    // console.log('In add Shape')
+    // console.log(this.state)
     this.getAShape().then(step => this.optimizeStep(step)).then(step => {
-      
+      // console.log(`Step dis ${step.distance} and state dis ${this.state.distance}`)
+      // console.log('--------------------------------------------')
+      // console.log('step is now >>>>>')
+      // console.log(step)
+      if(step.distance < this.state.distance){
+        // console.log('Fount best step no ' + this.steps)
+        // console.log(step)
+        this.steps++
+        this.state = step.applyStep(this.state)
+        this.onStep(step)
+      }
+      else{
+        this.onStep(null)
+      }
+      this.continue()
     })
+  }
+  continue(){
+    if(this.steps < this.config.stepSize){
+      setTimeout(() => this.addShape(), 10)
+      // this.addShape()
+    }
   }
 
   optimizeStep(step){
+    // console.log('In optimize')
+    // console.log(this.state)
     const MAX = this.config.mutateTimes
     let failedTimes = 0
-    let times = 0
+    let totalTimes = 0
+    let successTimes = 0
     let bestStep = step
-    let resolve
+    let resolve = null
     let promise = new Promise(res => resolve = res)
 
-    let mutateStep = () => {
-      if(failedTimes >= MAX){ return resolve(bestStep) }
-      times++
-      bestStep.mutate().compute(this.state).then(newStep => {
-        if(newStep.distance > bestStep.distance){  failedTimes++ }
+    let mutStep = () => {
+      if(failedTimes >= MAX){
+        console.log("mutation optimized distance from %s to %s in (%s good, %s total) attempts", arguments[0].distance, bestStep.distance, successTimes, totalTimes)
+        return resolve(bestStep)
+      }
+      totalTimes++
+      bestStep.mutateStep().compute(this.state).then(newStep => {
+        if(newStep.distance > bestStep.distance){
+          failedTimes++
+          // console.log('Failed' + failedTimes)
+        }
         else{
+          // console.log('Passed step-------')
           bestStep = newStep
           failedTimes = 0
+          successTimes++
         }
+        mutStep()
       })
-      mutateStep()
     }
+    mutStep()
     return promise
   }
 
@@ -436,27 +513,31 @@ class Optimiser{
     let allPromises = []
     for(let i = 0; i < MAX; i++){
       let shape = Shape.create(this.config)
-      let promise = new Step(shape, this.cfg, this.state).then(step => {
-				if(!bestStep || step.distance < bestStep.distance){
-					bestStep = step
+      let promise = new Step(shape, this.config).compute(this.state).then(step => {
+        // console.log('Each step')
+        // console.log(step)
+				if(!best || step.distance < best.distance){
+					best = step
 				}
 			})
 			allPromises.push(promise);
     }
-    return Promise.all(allPromises).then(() => bestStep)
+    return Promise.all(allPromises).then(() => best)
   }
 }
 
 class Shape{
   static create(config){
-    let index = Math.floor(Math.random() * config.shapes) //Random shape out of the shapes array
+    let index = Math.floor(Math.random() * config.shapes.length) //Random shape out of the shapes array
     let shapeName = config.shapes[index]
+    // console.log(`Index >> ${index}`)
+    // console.log(config.shapes)
     return new shapeName(config.width, config.height)
   }
   constructor(width, height, num){
     this.bbox = {}
     if(num){
-      this.points = createPoints(width, height, num)
+      this.points = this.createPoints(width, height, num)
       this.computeBbox()
     }
   }
@@ -471,8 +552,8 @@ class Shape{
       let angle = Math.random() * 2 * Math.PI
       let dist = Math.random() * 20 //20 is the base dist
       points.push([
-        point[0] + ~~(radius * Math.cos(angle)), // cos = point.x / radius
-        point[1] + ~~(radius * Math.sin(angle)) // sin = point.y / radius
+        point[0] + ~~(dist * Math.cos(angle)), // cos = point.x / radius
+        point[1] + ~~(dist * Math.sin(angle)) // sin = point.y / radius
       ])
     }
     return points
@@ -511,7 +592,9 @@ class Shape{
   }
 
   mutate(config){
-    let copy = new this(0, 0)
+    // console.log('This is =-----------')
+    // console.log(this)
+    let copy = new this.constructor(0, 0)
     copy.points = JSON.parse(JSON.stringify(this.points))
 
     let randomIndex = Math.floor(Math.random() * copy.points.length)
@@ -526,10 +609,11 @@ class Shape{
 
   rasterize(alpha){
     let newCanvas = new Canvas(this.bbox.width, this.bbox.height)
-    newCanvas.ctx.fillStyle = '#000'
-    newCanvas.ctx.globalAlpha = alpha
-    newCanvas.ctx.translate(-this.bbox.left, -this.bbox.top)
-    this.paintShape(newCanvas.ctx)
+    let ctx = newCanvas.ctx
+    ctx.fillStyle = '#f33'
+    ctx.globalAlpha = alpha
+    ctx.translate(-this.bbox.left, -this.bbox.top)
+    this.paintShape(ctx)
     return newCanvas
   }
 }
@@ -549,4 +633,10 @@ class Rectangle extends Shape{
 
 function getScale(wid, hei, siz){
   return Math.max(wid / siz, hei / siz, 1)
+}
+
+const shapeClasses = {
+  "Triangles": Triangle,
+  "Rectangles": Rectangle,
+  // "Ellipses": Ellipse
 }
