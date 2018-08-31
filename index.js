@@ -55,7 +55,7 @@ function submitForm(e){
   config.temp = temp
   console.log(config)
   Canvas.newLeftCanvas(config).then(leftCanvas => {
-    console.log('Canvas resolved')
+    // console.log('Canvas resolved')
     // debugger
     Canvas.newRightCanvas(leftCanvas, config)
   })
@@ -468,8 +468,12 @@ class Optimizer{
   }
   continue(){
     if(this.steps < this.config.stepSize){
+      stepsLabel.innerHTML = `Tried ${this.steps} out of ${this.config.stepSize}`
       setTimeout(() => this.addShape(), 10)
       // this.addShape()
+    }
+    else{
+      console.log('DONE')
     }
   }
 
@@ -500,6 +504,7 @@ class Optimizer{
           bestStep = newStep
           failedTimes = 0
           successTimes++
+          stepsLabel.innerHTML = `Tried ${successTimes} out of ${MAX}`
         }
         mutStep()
       })
@@ -629,9 +634,49 @@ class Rectangle extends Shape{
   constructor(width, height){
     super(width, height, 4)
   }
-  // createPoints(width, height, num){
-  //   let p1 = 
-  // }
+  createPoints(width, height, num){
+    let p1 = Shape.randomPoint(width, height)
+    let p2 = Shape.randomPoint(width, height)
+
+    let left = Math.min(p1[0], p2[0])
+		let right = Math.max(p1[0], p2[0])
+		let top = Math.min(p1[1], p2[1])
+		let bottom = Math.max(p1[1], p2[1])
+
+		return [
+			[left, top], // top left
+			[right, top], // top right
+			[right, bottom], // bottom right
+			[left, bottom]] // bottom left
+  }
+  mutate(config){
+    let copy = new this.constructor(0, 0)
+    copy.points = JSON.parse(JSON.stringify(this.points))
+
+    let randomIndex = Math.floor(Math.random() * copy.points.length)
+    // let randomPoint = copy.points[randomIndex]
+    let randomDist = ~~((Math.random() - 0.5) * 20)
+    switch (randomIndex) {
+			case 0: /* left */
+			  copy.points[0][0] += randomDist
+			  copy.points[3][0] += randomDist
+			  break
+			case 1: /* top */
+			  copy.points[0][1] += randomDist
+			  copy.points[1][1] += randomDist
+			  break
+			case 2: /* right */
+			  copy.points[1][0] += randomDist
+			  copy.points[2][0] += randomDist
+			  break
+			case 3: /* bottom */
+			  copy.points[2][1] += randomDist
+			  copy.points[3][1] += randomDist
+			  break
+		}
+    
+    return copy.computeBbox()
+  }
 }
 
 
