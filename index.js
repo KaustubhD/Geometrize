@@ -10,8 +10,6 @@ let steps = 0
 console.log(typesRadio)
 
 function init(){
-  // let typesRadio = document.querySelectorAll('input[name="type"]')
-  // output.style.display = 'block'
   typesRadio.forEach(rad => {
     rad.addEventListener('click', syncRadios)
   })
@@ -55,8 +53,6 @@ function submitForm(e){
   config.temp = temp
   console.log(config)
   Canvas.newLeftCanvas(config).then(leftCanvas => {
-    // console.log('Canvas resolved')
-    // debugger
     Canvas.newRightCanvas(leftCanvas, config)
   })
 }
@@ -141,8 +137,6 @@ function getFillColor(canvas){
 }
 
 function newBlankCanvas(config){
-  // console.log('In newblank')
-  // console.log(config.width)
   return new Canvas(config.width, config.height).fillFull(config.fill)
 }
 
@@ -263,8 +257,6 @@ class Canvas{
           config.width = image.naturalWidth / computeScale
           config.height = image.naturalHeight / computeScale
           config.scale = computeScale / viewScale
-          // console.log('Innnnn herererererere')
-          // console.log(config)
 
           let canvas = newBlankCanvas(config)
           canvas.ctx.drawImage(image, 0, 0, config.width, config.height)
@@ -272,7 +264,6 @@ class Canvas{
           if(config.fill == 'auto'){
             config.fill = getFillColor(canvas)
           }
-          // debugger
           resolve(canvas)
         }
         image.onerror = e => {
@@ -320,7 +311,6 @@ class Canvas{
     stepsLabel.innerHTML = ''
 
     left.appendChild(leftCanvas.canvas)
-    // debugger
     let optimizer = new Optimizer(leftCanvas, config)
     steps = 0
 
@@ -330,7 +320,6 @@ class Canvas{
     // console.log(config)
     newConfig.width = config.scale * config.width
     newConfig.height = config.scale * config.height
-    // console.log(newConfig)
     let newCanvas = new Canvas(newConfig.width, newConfig.height).fillFull(newConfig.fill)
     newCanvas.ctx.scale(config.scale, config.scale)
     raster.appendChild(newCanvas.canvas)
@@ -338,7 +327,6 @@ class Canvas{
     optimizer.onStep = (step) => {
       if(step){ //We can't have null here
         newCanvas.drawStepOnCanvas(step)
-        // let percent = 
       }
     }
     optimizer.addShape()
@@ -397,9 +385,6 @@ class Step{
 
     this.color = 'rgb(255, 0, 0)'
     this.distance = Infinity
-    // if(state){
-    //   return this.compute(state)
-    // }
   }
   compute(state) {
 		let pixels = state.right.canvas.width * state.right.canvas.height;
@@ -408,18 +393,15 @@ class Step{
       shape: this.shape.rasterize(this.alpha).getImageData(),
       target: state.left.getImageData(),
 			current: state.right.getImageData()
-    };
-    // console.log('In step')
-    // console.log(imageData)
+    }
 
-    let {color, differenceChange} = computeColorAndDifferenceChange(offset, imageData, this.alpha);
+    let {color, differenceChange} = computeColorAndDifferenceChange(offset, imageData, this.alpha)
     // console.log(`Diff change is ${differenceChange}`)
 		this.color = color;
-		let currentDifference = dist_diff(state.distance, pixels);
-		if (-differenceChange > currentDifference) debugger;
-		this.distance = diff_dist(currentDifference + differenceChange, pixels);
-    // console.log(this.distance)
-		return Promise.resolve(this);
+		let currentDifference = dist_diff(state.distance, pixels)
+		if (-differenceChange > currentDifference) debugger
+		this.distance = diff_dist(currentDifference + differenceChange, pixels)
+		return Promise.resolve(this)
   }
   
   mutateStep(){
@@ -446,8 +428,6 @@ class Optimizer{
   }
 
   addShape(){
-    // console.log('In add Shape')
-    // console.log(this.state)
     this.getAShape().then(step => this.optimizeStep(step)).then(step => {
       // console.log(`Step dis ${step.distance} and state dis ${this.state.distance}`)
       // console.log('--------------------------------------------')
@@ -470,7 +450,6 @@ class Optimizer{
     if(this.steps < this.config.stepSize){
       stepsLabel.innerHTML = `Tried ${this.steps} out of ${this.config.stepSize}`
       setTimeout(() => this.addShape(), 10)
-      // this.addShape()
     }
     else{
       console.log('DONE')
@@ -478,8 +457,6 @@ class Optimizer{
   }
 
   optimizeStep(step){
-    // console.log('In optimize')
-    // console.log(this.state)
     const MAX = this.config.mutateTimes
     let failedTimes = 0
     let totalTimes = 0
@@ -497,10 +474,8 @@ class Optimizer{
       bestStep.mutateStep().compute(this.state).then(newStep => {
         if(newStep.distance > bestStep.distance){
           failedTimes++
-          // console.log('Failed' + failedTimes)
         }
         else{
-          // console.log('Passed step-------')
           bestStep = newStep
           failedTimes = 0
           successTimes++
