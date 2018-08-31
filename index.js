@@ -45,7 +45,7 @@ function submitForm(e){
   let fileIn = document.getElementById('file-input')
   let fileURL = document.getElementById('file-url')
   let temp = 'nothing'
-  if(fileIn.length > 0){
+  if(fileIn.files.length > 0){
     temp = URL.createObjectURL(fileIn.files[0])
   }
   else if(fileURL.value){
@@ -54,7 +54,11 @@ function submitForm(e){
   let config = getConfig()
   config.temp = temp
   console.log(config)
-  Canvas.newLeftCanvas(config).then(leftCanvas => Canvas.newRightCanvas(leftCanvas, config))
+  Canvas.newLeftCanvas(config).then(leftCanvas => {
+    console.log('Canvas resolved')
+    // debugger
+    Canvas.newRightCanvas(leftCanvas, config)
+  })
 }
 
 let numericProps = ['stepSize', 'alpha', 'viewSize', 'computeSize', 'mutateTimes', 'beginShapes']
@@ -225,7 +229,7 @@ function computeDifferenceChange(offset, imageData, color) { //Copied
 			sum += d2r*d2r + d2g*d2g + d2b*d2b;
 		}
 	}
-  console.log(`Sum is ${sum}`)
+  // console.log(`Sum is ${sum}`)
 	return sum;
 }
 
@@ -254,21 +258,21 @@ class Canvas{
         image.crossOrigin = true
         image.src = config.temp
         image.onload = e => {
-          let computeScale = getScale(image.naturalWidth, image.naturalWidth, config.computeSize)
-          let viewScale = getScale(image.naturalWidth, image.naturalWidth, config.viewSize)
+          let computeScale = getScale(image.naturalWidth, image.naturalHeight, config.computeSize)
+          let viewScale = getScale(image.naturalWidth, image.naturalHeight, config.viewSize)
           config.width = image.naturalWidth / computeScale
           config.height = image.naturalHeight / computeScale
           config.scale = computeScale / viewScale
           // console.log('Innnnn herererererere')
           // console.log(config)
 
-          let canvas = new Canvas(config.width, config.height)
-          canvas.ctx.drawImage(image, 0, 0, canvas.width, canvas.height)
+          let canvas = newBlankCanvas(config)
+          canvas.ctx.drawImage(image, 0, 0, config.width, config.height)
 
           if(config.fill == 'auto'){
             config.fill = getFillColor(canvas)
           }
-
+          // debugger
           resolve(canvas)
         }
         image.onerror = e => {
@@ -316,6 +320,7 @@ class Canvas{
     stepsLabel.innerHTML = ''
 
     left.appendChild(leftCanvas.canvas)
+    // debugger
     let optimizer = new Optimizer(leftCanvas, config)
     steps = 0
 
@@ -357,10 +362,6 @@ class Canvas{
   }
 
   distCans(otherOne){
-    // console.log('this')
-    // console.log(this)
-    // console.log('Other one')
-    // console.log(otherOne)
     let diff = this.diffCans(otherOne)
     return diff_dist(diff, this.canvas.width * this.canvas.height)
   }
@@ -394,7 +395,7 @@ class Step{
     this.config = config
     this.alpha = config.alpha
 
-    this.fillColor = 'rgb(255, 0, 0)'
+    this.color = 'rgb(255, 0, 0)'
     this.distance = Infinity
     // if(state){
     //   return this.compute(state)
@@ -404,9 +405,9 @@ class Step{
 		let pixels = state.right.canvas.width * state.right.canvas.height;
 		let offset = this.shape.bbox;
 		let imageData = {
-			shape: this.shape.rasterize(this.alpha).getImageData(),
-			current: state.right.getImageData(),
-			target: state.left.getImageData()
+      shape: this.shape.rasterize(this.alpha).getImageData(),
+      target: state.left.getImageData(),
+			current: state.right.getImageData()
     };
     // console.log('In step')
     // console.log(imageData)
@@ -571,8 +572,8 @@ class Shape{
     this.bbox = {
       top: min[1],
       left: min[0],
-      width: max[0] - min[0] || 1,
-      height: max[1] - max[1] || 1
+      width: (max[0] - min[0]) || 1,
+      height: (max[1] - min[1]) || 1
     }
     return this
   }
@@ -628,6 +629,9 @@ class Rectangle extends Shape{
   constructor(width, height){
     super(width, height, 4)
   }
+  // createPoints(width, height, num){
+  //   let p1 = 
+  // }
 }
 
 
