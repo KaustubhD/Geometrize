@@ -5,7 +5,7 @@ let typesRadio = document.querySelectorAll('input[name="type"]')
 let left = output.querySelector('#left')
 let stepsLabel = document.getElementById('stepsLabel')
 let raster = output.querySelector('#raster')
-let vector = output.querySelector('#vector')
+// let vector = output.querySelector('#vector')
 let steps = 0
 console.log(typesRadio)
 
