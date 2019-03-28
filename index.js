@@ -1,4 +1,4 @@
-'use strict'
+// 'use strict'
 
 navigator.serviceWorker.register('sw.js')
 
