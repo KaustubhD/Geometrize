@@ -42,27 +42,32 @@ function syncRangesLabels(range){
   syncRL()
 }
 
+var imgURL = ''
+function uploadImage(e){
+  let fileIn = document.getElementById('file-input')
+  let fileURL = document.getElementById('file-url')
+  if(fileIn.files.length > 0){
+    imgUrl = URL.createObjectURL(fileIn.files[0])
+  }
+  else if(fileURL.value){
+    imgUrl = fileURL.value
+  }
+  else if(e.data.file){
+    imgUrl = URL.createObjectURL(e.data.file)
+  }
+  else if(e.target.files.length > 0){
+    imgUrl = URL.createObjectURL(e.target.files[0])
+  }
+}
+
 function submitForm(e){
   e.preventDefault()
   console.log(e)
-  let fileIn = document.getElementById('file-input')
-  let fileURL = document.getElementById('file-url')
-  let temp = 'nothing'
-  if(fileIn.files.length > 0){
-    temp = URL.createObjectURL(fileIn.files[0])
-  }
-  else if(fileURL.value){
-    temp = fileURL.value
-  }
-  else if(e.data.file){
-    temp = URL.createObjectURL(e.data.file)
-  }
-  else if(e.target.files.length > 0){
-    temp = URL.createObjectURL(e.target.files[0])
-  }
+
   let config = getConfig()
-  config.temp = temp
+  config.temp = imgUrl
   console.log(config)
+  
   Canvas.newLeftCanvas(config).then(leftCanvas => {
     Canvas.newRightCanvas(leftCanvas, config)
   })
