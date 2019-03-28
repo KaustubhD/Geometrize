@@ -21,8 +21,8 @@ function init(){
   ranges.forEach(syncRangesLabels)
 
   document.querySelector('form').addEventListener('submit', submitForm)
-  document.querySelector('input[type="file"]').onchange = (e) => submitForm(e)
-  navigator.serviceWorker.onmessage = (e) => submitForm(e)
+  document.querySelector('input[type="file"]').onchange = (e) => uploadImage(e)
+  navigator.serviceWorker.onmessage = (e) => uploadImage(e)
 }
 init()
 
