@@ -1,5 +1,7 @@
 'use strict'
 
+navigator.serviceWorker.register('sw.js')
+
 let output = document.getElementById('output')
 let typesRadio = document.querySelectorAll('input[name="type"]')
 let left = output.querySelector('#left')
