@@ -21,6 +21,7 @@ function init(){
   ranges.forEach(syncRangesLabels)
 
   document.querySelector('form').addEventListener('submit', submitForm)
+  navigator.serviceWorker.onmessage = (e) => submitForm(e)
 }
 init()
 
@@ -50,6 +51,9 @@ function submitForm(e){
   }
   else if(fileURL.value){
     temp = fileURL.value
+  }
+  else if(e.data.file){
+    temp = URL.createObjectURL(e.data.file)
   }
   let config = getConfig()
   config.temp = temp
