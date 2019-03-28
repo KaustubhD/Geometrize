@@ -21,6 +21,7 @@ function init(){
   ranges.forEach(syncRangesLabels)
 
   document.querySelector('form').addEventListener('submit', submitForm)
+  document.querySelector('input[type="file"]').onchange = (e) => submitForm(e)
   navigator.serviceWorker.onmessage = (e) => submitForm(e)
 }
 init()
@@ -43,6 +44,7 @@ function syncRangesLabels(range){
 
 function submitForm(e){
   e.preventDefault()
+  console.log(e)
   let fileIn = document.getElementById('file-input')
   let fileURL = document.getElementById('file-url')
   let temp = 'nothing'
@@ -54,6 +56,9 @@ function submitForm(e){
   }
   else if(e.data.file){
     temp = URL.createObjectURL(e.data.file)
+  }
+  else if(e.target.files.length > 0){
+    temp = URL.createObjectURL(e.target.files[0])
   }
   let config = getConfig()
   config.temp = temp
