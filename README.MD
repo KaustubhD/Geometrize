@@ -6,4 +6,5 @@ Go ahead, try it out [here](https://kaydee.github.io/Geometrize).
 
 **Update**
   > Now a PWA.
+  
   > Some features not yet available in Chrome yet (As of 29/03/2019)
