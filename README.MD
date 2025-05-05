@@ -2,7 +2,7 @@
 
 A simple page that helps you convert any image (almost) into pile of shapes that look kinda similar to your image.
 
-Go ahead, try it out [here](https://kaydee.github.io/Geometrize).
+Go ahead, try it out [here](https://kaustubhd.github.io/Geometrize).
 
 **Update**
   > Now a PWA.
